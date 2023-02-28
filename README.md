@@ -103,3 +103,95 @@ Create an EKS cluster using `eksctl`
 eksctl create cluster --config-file=eks-cluster.yaml
 ```
 
+### Other commands
+
+To re-write the kube config file, run:
+
+```sh
+eksctl utils write-kubeconfig --cluster=<cluster-name>
+```
+
+To delete the ekc cluster, run:
+
+```sh
+eksctl delete cluster --name <cluster-name>
+```
+
+### Deploy apps on EKS cluster
+
+#### Add an Ingress Controller (Load Balancer Controller)
+
+- Create a policy
+
+```sh
+curl -o iam-policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.4.4/docs/install/iam_policy.json
+
+aws iam create-policy \
+    --policy-name AWSLoadBalancerControllerIAMPolicy \
+    --policy-document file://iam-policy.json
+```
+
+- Create a ServiceAccount with the policy above
+
+```sh
+eksctl create iamserviceaccount \
+    --cluster eks-demo \
+    --namespace kube-system \
+    --name aws-load-balancer-controller \
+    --attach-policy-arn arn:aws:iam::$ACCOUNT_ID:policy/AWSLoadBalancerControllerIAMPolicy \
+    --override-existing-serviceaccounts \
+    --approve
+```
+
+- Install cert-manager
+
+```sh
+kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.5.4/cert-manager.yaml
+```
+
+- Download the load balancer controller yaml file
+
+```sh
+wget https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/download/v2.4.4/v2_4_4_full.yaml
+```
+
+- Edit `cluster-name` in the downloaded yaml file
+
+```yaml
+spec:
+    containers:
+    - args:
+        - --cluster-name=eks-demo # Set the created cluster name
+        - --ingress-class=alb
+        image: amazon/aws-alb-ingress-controller:v2.4.4
+```
+
+- Delete the `ServiceAccount` yaml spec (below) because it's been already created.
+
+```yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/name: aws-load-balancer-controller
+  name: aws-load-balancer-controller
+  namespace: kube-system
+```
+
+- Deploy AWS Load Balancer Controller
+
+```sh
+kubectl apply -f v2_4_4_full.yaml
+```
+
+- Check if it's deployed successfully
+
+```sh
+# Check the deployment
+kubectl get deployment -n kube-system aws-load-balancer-controller
+
+# Check the service account
+kubectl get sa aws-load-balancer-controller -n kube-system -o yaml
+```
