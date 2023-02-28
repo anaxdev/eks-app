@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  demo-frontend
+  namespace: default
+  labels:
+    app:  demo-frontend
+spec:
+  selector:
+    matchLabels:
+      app: demo-frontend
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app:  demo-frontend
+    spec:
+      containers:
+      - name:  demo-frontend
+        image:  anadk/demo-frontend:latest
+        imagePullPolicy: Always
+        # resources:
+        #   requests:
+        #     cpu: 100m
+        #     memory: 100Mi
+        #   limits:
+        #     cpu: 100m
+        #     memory: 100Mi
+        ports:
+        - containerPort:  80
