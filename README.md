@@ -195,3 +195,4 @@ kubectl get deployment -n kube-system aws-load-balancer-controller
 # Check the service account
 kubectl get sa aws-load-balancer-controller -n kube-system -o yaml
 ```
+
